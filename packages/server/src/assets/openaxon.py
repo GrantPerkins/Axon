@@ -9,6 +9,7 @@ import pandas
 from PIL import Image
 
 from download import download_dataset
+from progress import Progress
 
 
 class OpenImagesDownloader:
@@ -43,6 +44,7 @@ class OpenImagesDownloader:
         self.label_map = {}
         self.image_data = {}
         self.csv = []
+        self.progress = Progress(os.path.join(self.directory, "progress.json"))
 
     def download(self):
         """
@@ -50,7 +52,7 @@ class OpenImagesDownloader:
         :return: None
         """
         download_dataset(dest_dir=self.directory + "/train", meta_dir="./data/create", class_labels=self.labels,
-                         exclusions_path=None, limit=self.limit)
+                         exclusions_path=None, limit=self.limit, progress=self.progress)
 
     def parse_line(self, key, label, height, width, box):
         """
@@ -81,18 +83,11 @@ class OpenImagesDownloader:
                 row = row.rstrip().split(',')
                 self.label_map.update({row[0]: row[1]})
 
-        try:
-            os.mkdir(self.directory + "/tar")
-        except FileExistsError:
-            pass
-        try:
-            os.mkdir(self.directory + "/tar/train")
-        except FileExistsError:
-            pass
-        try:
-            os.mkdir(self.directory + "/tar/test")
-        except FileExistsError:
-            pass
+        for sub_dir in ["tar", "tar/train", "tar/test"]:
+            sub_dir = self.directory + "/" + sub_dir
+            if not os.path.isdir(sub_dir):
+                os.mkdir(sub_dir)
+
         for image_path in images:
             im = Image.open(image_path)
             width, height = im.size
@@ -123,18 +118,23 @@ class OpenImagesDownloader:
             except KeyError:
                 pass
 
+        self.progress.update(3 / 8)
+
         print("creating subfolders")
         self.create_subfolders("train")
+        self.progress.update(4 / 8)
         self.create_subfolders("test")
+        self.progress.update(5 / 8)
 
     def create_subfolders(self, name):
-        with open(self.directory + "/tar/{}/_annotations.csv".format(name), 'w+') as csv:
+        with open(self.directory + f"/tar/{name}/_annotations.csv", 'w+') as csv:
             csv.write("filename,width,height,class,xmin,ymin,xmax,ymax\n")
 
+            csv_len = len(self.csv)
             if name == "train":
-                split = range(len(self.csv))[:int(len(self.csv) * .7)]
+                split = range(int(csv_len * .7))
             else:
-                split = range(len(self.csv))[int(len(self.csv) * .7):]
+                split = range(int(csv_len * .7), csv_len)
 
             for i in split:
                 row = self.csv[i]
@@ -169,6 +169,9 @@ if __name__ == "__main__":
     downloader.create_csv()
     print("Making archive")
     downloader.make_zip()
+    downloader.progress.update(6 / 8)
     downloader.make_json()
+    downloader.progress.update(7 / 8)
     downloader.clean()
+    downloader.progress.update(8 / 8)
     print("Clean up done.")

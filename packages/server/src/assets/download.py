@@ -17,6 +17,8 @@ from tqdm import tqdm
 __all__ = ["download_dataset", "download_images"]
 
 # OpenImages URL locations
+import progress
+
 _OID_v4 = "https://storage.googleapis.com/openimages/2018_04/"
 _OID_v5 = "https://storage.googleapis.com/openimages/v5/"
 
@@ -91,10 +93,12 @@ def _class_label_codes(
 def download_dataset(
         dest_dir: str,
         class_labels: List[str],
+        progress: progress.Progress,
         exclusions_path: str = None,
         annotation_format: str = None,
         meta_dir: str = None,
         limit: int = None,
+
 ) -> Dict:
     """
     Downloads a dataset of images and annotations for a specified list of
@@ -121,6 +125,7 @@ def download_dataset(
 
     # get the OpenImages image class codes for the specified class labels
     label_codes = _class_label_codes(class_labels, meta_dir)
+    progress.update(1 / 8)
 
     # build the directories for each class label
     class_directories = {}
@@ -184,7 +189,7 @@ def download_dataset(
 
         # update the downloaded images count for this label
         label_download_counts[class_label] += len(image_ids)
-
+    progress.update(2 / 8)
     return class_directories
 
 
@@ -265,8 +270,6 @@ def _download_images_by_id(
         # use the executor to map the download function to the iterable of arguments
         list(tqdm(executor.map(_download_single_image, download_args_list),
                   total=len(download_args_list), desc="Downloading images"))
-
-
 
 
 # ------------------------------------------------------------------------------

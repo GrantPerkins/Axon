@@ -50,12 +50,14 @@ export class DatasetService extends DataSource {
   private readonly mLService: MLService;
   private readonly path: string;
   private store: Sequelize;
+  private progress: number;
 
   constructor(store: Sequelize, mLService: MLService, path: string) {
     super();
     this.path = path;
     this.mLService = mLService;
     this.store = store;
+    this.progress = 0.0;
   }
 
   async getDatasets(): Promise<Dataset[]> {
@@ -85,6 +87,7 @@ export class DatasetService extends DataSource {
   }
 
   async createDataset(classes: string[], maxImages: number): Promise<CreateJob> {
+    this.progress = 0.0;
     console.log("Creating new dataset");
     const dataset = Dataset.build({ name: classes[0] });
     await mkdirp(`data/datasets/${dataset.id}`);
@@ -210,5 +213,14 @@ export class DatasetService extends DataSource {
       await dataset.destroy();
     }
     return true;
+  }
+
+  async getCreateProgress(id: string): Promise<number> {
+    const progressPath = `/tmp/${id}/progress.json`;
+    if (fs.existsSync(progressPath)) {
+      const buffer = await fs.promises.readFile(progressPath)
+      this.progress = JSON.parse(buffer.toString())["progress"];
+    }
+    return this.progress;
   }
 }
