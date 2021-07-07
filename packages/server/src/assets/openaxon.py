@@ -173,5 +173,4 @@ if __name__ == "__main__":
     downloader.make_json()
     downloader.progress.update(7 / 8)
     downloader.clean()
-    downloader.progress.update(8 / 8)
     print("Clean up done.")

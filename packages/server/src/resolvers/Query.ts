@@ -37,7 +37,7 @@ export const Query: QueryResolvers = {
   testjobs: (_, args, { dataSources }) => {
     return dataSources.projectService.getTestjobs();
   },
-  getCreateProgress: (_, args, {dataSources}) => {
-    return dataSources.datasetService.getCreateProgress(args.id);
-}
+  getCreateProgress: (_, args , { dataSources }) => {
+    return dataSources.datasetService.getCreateProgress();
+  }
 };

@@ -7,7 +7,7 @@ import * as unzipper from "unzipper";
 import * as tar from "tar";
 import { imageSize as sizeOf } from "image-size";
 import { glob } from "glob";
-import { CreateJob, LabeledImage, ObjectLabel, Point } from "../schema/__generated__/graphql";
+import { CreateJob, CreateProgress, LabeledImage, ObjectLabel, Point } from "../schema/__generated__/graphql";
 import { Sequelize } from "sequelize";
 import { Dataset } from "../store";
 import MLService from "../mL";
@@ -51,6 +51,7 @@ export class DatasetService extends DataSource {
   private readonly path: string;
   private store: Sequelize;
   private progress: number;
+  private createID: string;
 
   constructor(store: Sequelize, mLService: MLService, path: string) {
     super();
@@ -58,6 +59,7 @@ export class DatasetService extends DataSource {
     this.mLService = mLService;
     this.store = store;
     this.progress = 0.0;
+    this.createID = "null";
   }
 
   async getDatasets(): Promise<Dataset[]> {
@@ -90,6 +92,7 @@ export class DatasetService extends DataSource {
     this.progress = 0.0;
     console.log("Creating new dataset");
     const dataset = Dataset.build({ name: classes[0] });
+    this.createID = dataset.id;
     await mkdirp(`data/datasets/${dataset.id}`);
     await mkdirp("data/create");
     const createJob = await this.mLService.create(classes, maxImages, dataset.id);
@@ -215,12 +218,17 @@ export class DatasetService extends DataSource {
     return true;
   }
 
-  async getCreateProgress(id: string): Promise<number> {
-    const progressPath = `/tmp/${id}/progress.json`;
-    if (fs.existsSync(progressPath)) {
-      const buffer = await fs.promises.readFile(progressPath)
-      this.progress = JSON.parse(buffer.toString())["progress"];
+  async getCreateProgress(): Promise<CreateProgress> {
+    if (this.createID !== "test") {
+      const progressPath = `/tmp/${this.createID}/progress.json`;
+      if (fs.existsSync(progressPath)) {
+        const buffer = await fs.promises.readFile(progressPath);
+        this.progress = JSON.parse(buffer.toString())["progress"];
+      }
     }
-    return this.progress;
+    return {
+      progress: this.progress,
+      createID: this.createID
+    };
   }
 }

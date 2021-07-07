@@ -15,7 +15,7 @@ type Query {
   testjobs: [Testjob!]!
   projects: [Project!]!
   dockerState: DockerState!
-  getCreateProgress(id: ID!): Float!
+  getCreateProgress: CreateProgress!
 }
 
 type Mutation {
@@ -210,4 +210,9 @@ input ProjectUpdateInput {
   batchSize: Int
   evalFrequency: Int
   percentEval: Float
+}
+
+type CreateProgress {
+  progress: Float!
+  createID: String!
 }

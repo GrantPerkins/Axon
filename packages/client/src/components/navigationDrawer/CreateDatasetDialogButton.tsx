@@ -8,16 +8,18 @@ import {
   DialogTitle,
   Grid,
   IconButton,
+  LinearProgress,
   Link,
   TextField,
   Tooltip,
   Typography
 } from "@material-ui/core";
 import gql from "graphql-tag";
-import { useApolloClient, useMutation } from "@apollo/client";
+import { useApolloClient, useMutation, useQuery } from "@apollo/client";
 import { TreeItem } from "@material-ui/lab";
 import { makeStyles } from "@material-ui/core/styles";
 import { CloudDownload, ControlPoint, Create, RemoveCircleOutline } from "@material-ui/icons";
+import { GetCreateProgress } from "./__generated__/GetCreateProgress";
 
 const useStyles = makeStyles((theme) => ({
   link: {
@@ -72,6 +74,15 @@ const CREATE_DATASET_MUTATION = gql`
   }
 `;
 
+const GET_CREATE_PROGRESS_QUERY = gql`
+  query GetCreateProgress {
+    getCreateProgress {
+        progress
+        createID
+    }
+  }
+`;
+
 export default function CreateDatasetDialogButton(): ReactElement {
   const classes = useStyles();
   const [open, setOpen] = React.useState(false);
@@ -82,7 +93,22 @@ export default function CreateDatasetDialogButton(): ReactElement {
   const [createID, setCreateID] = React.useState("");
   const [zipPath, setZipPath] = React.useState("");
   const [createState, setCreateState] = React.useState(CreateState.Entering);
+  const [progress, setProgress] = React.useState(0.0);
   const apolloClient = useApolloClient();
+
+  const { data, loading, error,  } = useQuery<GetCreateProgress>(GET_CREATE_PROGRESS_QUERY, {
+    pollInterval: 1000,
+    onCompleted: data1 => {
+      console.log("run")
+    },
+  });
+  console.log(`Progress: ${data?.getCreateProgress.progress}`);
+  const createProgress = data?.getCreateProgress;
+  if (data !== null && createProgress !== undefined) {
+    if (createProgress.progress > progress) {
+      setProgress(createProgress.progress);
+    }
+  }
 
   const [createDataset] = useMutation<Created>(CREATE_DATASET_MUTATION, {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -154,8 +180,7 @@ export default function CreateDatasetDialogButton(): ReactElement {
 
     if (!error) {
       setCreateState(CreateState.Creating);
-      await createDataset({ variables: { classes: keys, maxImages: maxNumber } });
-      await apolloClient.resetStore();
+      createDataset({ variables: { classes: keys, maxImages: maxNumber } }).then(() => apolloClient.resetStore());
     }
   };
 
@@ -244,9 +269,12 @@ export default function CreateDatasetDialogButton(): ReactElement {
 
   const getCreatingContents = () => {
     return (
-      <Typography variant={"body1"}>
-        This will take a while to download and process the requested images. Please wait.
-      </Typography>
+      <div>
+        <Typography variant={"body1"}>
+          This will take a while to download and process the requested images. Please wait.
+        </Typography>
+        <LinearProgress variant={"determinate"} value={progress*100} />
+      </div>
     );
   };
 
